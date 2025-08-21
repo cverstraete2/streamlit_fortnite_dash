@@ -6,7 +6,7 @@ st.title("Fortnite Island Directory with Engagement Metrics (Live API)")
 
 # Fetch island metadata with pagination
 
-def fetch_islands(limit=10000):
+def fetch_islands(limit=100):
     url = "https://api.fortnite.com/ecosystem/v1/islands"
     islands = []
     page = 1
