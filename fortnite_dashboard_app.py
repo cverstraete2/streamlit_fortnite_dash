@@ -1,25 +1,26 @@
 import streamlit as st
 import pandas as pd
 import requests
+import time
 
 st.title("Fortnite Island Directory with Engagement Metrics (Live API)")
 
-# Fetch island metadata with pagination
-
-def fetch_islands(limit=100):
+# Fetch island metadata with pagination and rate limiting
+def fetch_islands(limit=1000):
     url = "https://api.fortnite.com/ecosystem/v1/islands"
     islands = []
     page = 1
     while len(islands) < limit:
         try:
             response = requests.get(url, params={"page": page, "limit": 100})
-            response.raise_for_status()  # Raise HTTPError for bad responses
+            response.raise_for_status()
             json_data = response.json()
             data = json_data.get("data", [])
             if not data:
                 break
             islands.extend(data)
             page += 1
+            time.sleep(1)  # Rate limiting
         except requests.exceptions.RequestException as e:
             st.error(f"Request failed: {e}")
             break
@@ -28,12 +29,12 @@ def fetch_islands(limit=100):
             break
     return islands[:limit]
 
-
 # Fetch engagement metrics for a given island code and interval
 def fetch_metrics(code, interval):
     url = f"https://api.fortnite.com/ecosystem/v1/islands/{code}/metrics/{interval}"
     try:
         response = requests.get(url)
+        response.raise_for_status()
         return response.json()
     except:
         return {}
@@ -67,19 +68,10 @@ for island in islands:
 # Convert to DataFrame
 df = pd.DataFrame(combined_data)
 
-# Filter by category
-categories = df["Category"].dropna().unique().tolist()
-selected_category = st.selectbox("Filter by Category", ["All"] + categories)
-if selected_category != "All":
-    df = df[df["Category"] == selected_category]
-
 # Sort by selected metric
-sort_options = [col for col in df.columns if any(metric in col for metric in ["Plays", "Minutes Played", "Avg Minutes", "Peak CCU", "Unique Players"])]
-sort_by = st.selectbox("Sort by Metric", sort_options)
-sort_order = st.radio("Sort Order", ["Descending", "Ascending"])
-ascending = sort_order == "Ascending"
-df_sorted = df.sort_values(by=sort_by, ascending=ascending)
-
-# Display sorted and filtered data
-st.subheader("Filtered and Sorted Island Metrics")
-st.dataframe(df_sorted) if not df_sorted.empty else st.warning("No data available.")
+if not df.empty:
+    sort_options = [col for col in df.columns if any(metric in col for metric in ["Plays", "Minutes Played", "Avg Minutes", "Peak CCU", "Unique Players"])]
+    sort_by = st.selectbox("Sort by Metric", sort_options)
+    sort_order = st.radio("Sort Order", ["Descending", "Ascending"])
+    ascending = sort_order == "Ascending"
+   
