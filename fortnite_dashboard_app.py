@@ -5,18 +5,29 @@ import requests
 st.title("Fortnite Island Directory with Engagement Metrics (Live API)")
 
 # Fetch island metadata with pagination
+
 def fetch_islands(limit=10000):
     url = "https://api.fortnite.com/ecosystem/v1/islands"
     islands = []
     page = 1
     while len(islands) < limit:
-        response = requests.get(url, params={"page": page, "limit": 100})
-        data = response.json().get("data", [])
-        if not data:
+        try:
+            response = requests.get(url, params={"page": page, "limit": 100})
+            response.raise_for_status()  # Raise HTTPError for bad responses
+            json_data = response.json()
+            data = json_data.get("data", [])
+            if not data:
+                break
+            islands.extend(data)
+            page += 1
+        except requests.exceptions.RequestException as e:
+            st.error(f"Request failed: {e}")
             break
-        islands.extend(data)
-        page += 1
+        except ValueError:
+            st.error("Failed to decode JSON response.")
+            break
     return islands[:limit]
+
 
 # Fetch engagement metrics for a given island code and interval
 def fetch_metrics(code, interval):
